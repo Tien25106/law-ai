@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Law GPT – Tra cứu thuốc | Infranixx</title>
+  <meta name="description" content="Law GPT của Infranixx: tra cứu thuốc theo dữ liệu từ Cục Quản lý Dược – Bộ Y tế. Chọn nhóm thuốc và tên thuốc bằng nút bấm cùng trợ lý AI.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="img/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Bỏ qua và đến nội dung chính</a>
+
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <a class="brand" href="./" aria-label="Infranixx – Law GPT">
+        <img class="brand-logo" src="img/logo.png" alt="Infranixx" height="34"
+             onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+        <span class="brand-text" hidden>Infranixx</span>
+        <span class="brand-sep" aria-hidden="true"></span>
+        <span class="brand-product"><strong>Law GPT</strong><span>Tra cứu thuốc</span></span>
+      </a>
+      <nav class="topnav" aria-label="Điều hướng chính">
+        <a href="#danh-muc">Danh mục</a>
+        <a href="#thong-ke">Thống kê</a>
+        <a href="#gioi-thieu">Giới thiệu</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="shell intro">
+      <h1>Tra cứu thuốc cùng trợ lý AI</h1>
+      <p class="lead">Bấm nút để chọn nhóm thuốc và tên thuốc, không cần gõ vào ô tìm kiếm. Dữ liệu từ Cục Quản lý Dược – Bộ Y tế.</p>
+      <p id="data-badge" class="data-badge" role="status"></p>
+    </div>
+
+    <div class="shell stage">
+      <!-- Trợ lý AI: nút bấm thay cho thanh tìm kiếm -->
+      <section class="assistant" id="assistant" aria-labelledby="assistant-title">
+        <div class="assistant-head">
+          <span class="avatar" aria-hidden="true">AI</span>
+          <div class="assistant-id">
+            <h2 id="assistant-title">Trợ lý Law GPT</h2>
+            <p>Bấm vào nút bên dưới để chọn thuốc</p>
+          </div>
+          <button type="button" id="restart" class="link-btn">Bắt đầu lại</button>
+        </div>
+        <div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-label="Cuộc trò chuyện"></div>
+        <div id="chat-choices" class="chat-choices" role="group" aria-label="Lựa chọn nhanh"></div>
+        <form id="chat-form" class="chat-form" autocomplete="off">
+          <label for="chat-input" class="sr-only">Nhắn cho trợ lý</label>
+          <input id="chat-input" type="text" placeholder="Hoặc nhắn tên thuốc, nhóm thuốc…" enterkeyhint="send">
+          <button class="btn" type="submit">Gửi</button>
+        </form>
+      </section>
+
+      <!-- Tờ thông tin thuốc -->
+      <aside class="leaflet" id="detail" aria-live="polite" aria-label="Thông tin thuốc"></aside>
+    </div>
+
+    <section id="danh-muc" class="shell block" aria-labelledby="catalogue-title">
+      <div class="section-head">
+        <h2 id="catalogue-title">Danh mục thuốc</h2>
+        <p class="section-note"><span id="result-count"></span> <button type="button" id="clear-filter" class="link-btn" hidden>Xem tất cả</button></p>
+      </div>
+      <div class="formulary-head" aria-hidden="true">
+        <span>Tên thuốc</span><span>Hoạt chất</span><span>Dạng bào chế</span><span>Nhóm</span>
+      </div>
+      <ul id="results" class="formulary"></ul>
+    </section>
+
+    <section id="thong-ke" class="shell block" aria-labelledby="stats-title">
+      <div class="section-head">
+        <h2 id="stats-title">Thống kê</h2>
+        <p class="section-note">Tính bằng pandas và numpy, vẽ bằng matplotlib</p>
+      </div>
+      <dl class="numbers">
+        <div><dt>thuốc trong dữ liệu</dt><dd id="stat-total">0</dd></div>
+        <div><dt>nhóm thuốc</dt><dd id="stat-groups">0</dd></div>
+        <div><dt>dạng bào chế</dt><dd id="stat-forms">0</dd></div>
+      </dl>
+      <div class="figs">
+        <figure class="fig">
+          <figcaption>Số thuốc theo nhóm</figcaption>
+          <picture>
+            <source srcset="img/charts/groups-dark.png" media="(prefers-color-scheme: dark)">
+            <img src="img/charts/groups-light.png" alt="Biểu đồ cột ngang: số thuốc trong từng nhóm. Xem bảng số liệu bên dưới." width="1197" height="611" loading="lazy">
+          </picture>
+        </figure>
+        <figure class="fig">
+          <figcaption>Số thuốc theo dạng bào chế</figcaption>
+          <picture>
+            <source srcset="img/charts/forms-dark.png" media="(prefers-color-scheme: dark)">
+            <img src="img/charts/forms-light.png" alt="Biểu đồ cột ngang: số thuốc theo từng dạng bào chế. Xem bảng số liệu bên dưới." width="1242" height="481" loading="lazy">
+          </picture>
+        </figure>
+      </div>
+      <details class="table-view">
+        <summary>Xem số liệu dạng bảng</summary>
+        <div id="table-view-body" class="table-wrap"></div>
+      </details>
+    </section>
+
+    <section id="gioi-thieu" class="shell block" aria-labelledby="about-title">
+      <div class="section-head"><h2 id="about-title">Giới thiệu</h2></div>
+      <dl class="about">
+        <div><dt>Nguồn dữ liệu</dt><dd>Thông tin thuốc lấy từ website của Cục Quản lý Dược – Bộ Y tế Việt Nam, xử lý bằng Python (numpy, pandas, matplotlib).</dd></div>
+        <div><dt>Trợ lý AI</dt><dd>Trợ lý hiển thị nút nhóm thuốc và tên thuốc để bạn bấm chọn, thay cho việc gõ vào thanh tìm kiếm. Bạn vẫn có thể nhắn tin nếu muốn.</dd></div>
+        <div><dt>Lưu ý</dt><dd>Thông tin chỉ mang tính tham khảo, không thay thế tư vấn của bác sĩ hoặc dược sĩ. Hãy hỏi chuyên gia trước khi dùng thuốc.</dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="shell footer-inner">
+      <span>© 2026 Infranixx. Dự án Law GPT – Tra cứu thuốc.</span>
+      <span>Dữ liệu tham khảo từ Cục Quản lý Dược – Bộ Y tế.</span>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/sample-data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+﻿id,name,active_ingredient,strength,form,group_id,manufacturer,registration_no
+d01,Panadol Extra,"Paracetamol 500 mg, Caffeine 65 mg",500 mg + 65 mg,Viên nén bao phim,giam-dau,GlaxoSmithKline (GSK),VN-22530-20
+d02,Hapacol 650,Paracetamol,650 mg,Viên nén,giam-dau,Dược Hậu Giang (DHG Pharma),VD-22019-15
+d03,Efferalgan 500mg,Paracetamol,500 mg,Viên sủi bọt,giam-dau,UPSA SAS,VN-18540-14
+d04,Ibuprofen 400mg,Ibuprofen,400 mg,Viên nén bao phim,giam-dau,Dược phẩm Domesco,VD-21509-14
+d05,Meloxicam 7.5mg,Meloxicam,7.5 mg,Viên nén,giam-dau,STELLA Pharm,VD-24108-16
+d06,Augmentin 1g,"Amoxicillin 875 mg, Acid clavulanic 125 mg",1 g,Viên nén bao phim,khang-sinh,Glaxo Wellcome Production,VN-18012-14
+d07,Klamentin 500/125,"Amoxicillin 500 mg, Acid clavulanic 125 mg",625 mg,Viên nén bao phim,khang-sinh,Dược Hậu Giang (DHG Pharma),VD-20155-13
+d08,Zithromax 500mg,Azithromycin,500 mg,Viên nén bao phim,khang-sinh,Pfizer,VN-17120-13
+d09,Cefixim 200mg,Cefixim,200 mg,Viên nang cứng,khang-sinh,Dược phẩm Mekophar,VD-22415-15
+d10,Ciprofloxacin 500mg,Ciprofloxacin hydrochloride,500 mg,Viên nén bao phim,khang-sinh,STELLA Pharm,VD-25310-16
+d11,Telfast 180mg,Fexofenadine hydrochloride,180 mg,Viên nén bao phim,di-ung,Sanofi-Aventis,VD-25890-16
+d12,Cetirizine 10mg,Cetirizine dihydrochloride,10 mg,Viên nén bao phim,di-ung,Dược Hậu Giang (DHG Pharma),VD-21010-14
+d13,Loratadine 10mg,Loratadine,10 mg,Viên nén,di-ung,Dược phẩm Domesco,VD-24890-16
+d14,Aerius 5mg,Desloratadine,5 mg,Viên nén bao phim,di-ung,Organon / Schering-Plough,VN-15891-12
+d15,Phenergan 2.5%,Promethazine hydrochloride,25 mg/g (2.5%),Kem bôi da,di-ung,Sanofi,VD-22100-15
+d16,Nexium 40mg,Esomeprazole magnesium trihydrate,40 mg,Viên nén kháng dịch dạ dày,tieu-hoa,AstraZeneca,VN-19782-16
+d17,Omeprazole 20mg,Omeprazole,20 mg,Viên nang tan trong ruột,tieu-hoa,Dược Hậu Giang (DHG Pharma),VD-25800-16
+d18,Gaviscon Dual Action,"Natri alginate, Natri bicarbonate, Calci carbonate",500mg + 213mg + 325mg / 10ml,Hỗn dịch uống,tieu-hoa,Reckitt Benckiser,VN-19010-15
+d19,Phosphalugel,Nhôm phosphat colloidal 20%,12.38 g / 20g,Hỗn dịch uống dạng keo,tieu-hoa,Boehringer Ingelheim / Sanofi,VN-17540-13
+d20,Oresol 245,"Glucose khan, Natri clorid, Kali clorid, Natri citrat",Theo tiêu chuẩn WHO,Gói bột pha dung dịch uống,tieu-hoa,Dược phẩm Nam Hà,VD-23450-15
+d21,Berberin 50mg,Berberin clorid,50 mg,Viên bao đường,tieu-hoa,Dược phẩm OPC,VD-21980-14
+d22,Motilium-M 10mg,Domperidone,10 mg,Viên nén bao phim,tieu-hoa,Janssen-Cilag,VN-16780-13
+d23,Ventolin Inhaler 100mcg,Salbutamol sulfate,100 mcg / liều,Hỗn dịch xịt hít định liều,ho-hap,GlaxoSmithKline (GSK),VN-18900-15
+d24,Seretide Evohaler 25/125,"Salmeterol xinafoate 25mcg, Fluticasone propionate 125mcg",25 mcg + 125 mcg,Hỗn dịch xịt hít định liều,ho-hap,Glaxo Operations,VN-19450-16
+d25,Acemuc 200mg,Acetylcysteine,200 mg,Cốm pha hỗn dịch uống,ho-hap,Sanofi-Synthelabo,VD-23110-15
+d26,Bisolvon 8mg,Bromhexine hydrochloride,8 mg,Viên nén,ho-hap,Boehringer Ingelheim,VN-18450-14
+d27,Decolgen Forte,"Paracetamol 500mg, Phenylephrine 10mg, Chlorpheniramine 2mg",500mg + 10mg + 2mg,Viên nén,ho-hap,United Pharma,VD-24500-16
+d28,Berocca Performance,"Vitamin B tổng hợp, Vitamin C, Calci, Magie, Kẽm",Đa thành phần,Viên sủi bọt,vitamin,Bayer,VN-18890-15
+d29,Upsa-C 1000mg,Acid ascorbic (Vitamin C),1000 mg,Viên sủi bọt,vitamin,UPSA SAS,VN-16540-13
+d30,Calcium Corbiere 10ml,"Calci glucoheptonat 1.1g, Vitamin C 100mg, Vitamin PP 50mg",1.1 g / 10ml,Dung dịch uống,vitamin,Sanofi,VD-26500-17
+d31,Ferrovit,"Sắt fumarat 162mg, Acid folic 0.75mg, Vitamin B12 7.5mcg",162 mg + 0.75 mg,Viên nang mềm,vitamin,Mega Lifesciences,VN-17800-14
+d32,Glucophage 850mg,Metformin hydrochloride,850 mg,Viên nén bao phim,noi-tiet,Merck Sante S.A.S,VN-17980-14
+d33,Diamicron MR 60mg,Gliclazide phóng thích có biến đổi,60 mg,Viên nén phóng thích biến đổi,noi-tiet,Les Laboratoires Servier,VN-18650-14
+d34,Forxiga 10mg,Dapagliflozin propanediol monohydrate,10 mg,Viên nén bao phim,noi-tiet,AstraZeneca,VN-21090-18
+d35,Januvia 100mg,Sitagliptin phosphate monohydrate,100 mg,Viên nén bao phim,noi-tiet,Merck Sharp & Dohme (MSD),VN-19050-15
+d36,Berlthyrox 100mcg,Levothyroxine natri,100 mcg,Viên nén,noi-tiet,Berlin-Chemie AG,VN-16500-13
+d37,Amlor 5mg,Amlodipine besylate,5 mg,Viên nang cứng,tim-mach,Pfizer,VN-17890-14
+d38,Concor 5mg,Bisoprolol fumarate,5 mg,Viên nén bao phim hình tim,tim-mach,Merck KGaA,VN-18990-15
+d39,Micardis 40mg,Telmisartan,40 mg,Viên nén,tim-mach,Boehringer Ingelheim,VN-16980-13
+d40,Lipitor 20mg,Atorvastatin calcium trihydrate,20 mg,Viên nén bao phim,tim-mach,Pfizer,VN-19200-15
+d41,Crestor 10mg,Rosuvastatin calcium,10 mg,Viên nén bao phim,tim-mach,AstraZeneca,VN-17500-13
+d42,Plavix 75mg,Clopidogrel bisulfate,75 mg,Viên nén bao phim,tim-mach,Sanofi Winthrop Industrie,VN-18230-14
