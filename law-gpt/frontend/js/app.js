@@ -340,14 +340,19 @@
     state.group = d.group;
     state.query = "";
     selectDrug(d.id, true);
+
+    var sel1 = $("#select-drug-1");
+    if (sel1) sel1.value = d.id;
+
     botSay("Đây là thông tin của " + d.name + " (" + groupName(d.group) + "). Bạn muốn làm gì tiếp?").then(function () {
       setChoices([
+        { label: "Hành động nên làm", group: d.group, action: function () { handleUserText("ngoài ra tôi nên làm gì"); } },
+        { label: "Kiểm tra tương tác", soft: true, action: function () {
+            goTo($("#tuong-tac"));
+            botSay("Bạn có thể chọn thuốc thứ hai để kiểm tra tương tác với " + d.name + " bên dưới.").then(function () { setChoices([otherGroup()]); });
+        } },
         { label: "Xem thuốc cùng nhóm", group: d.group, action: function () { onGroup(groupById(d.group)); } },
-        otherGroup(),
-        { label: "Xem thống kê", soft: true, action: function () {
-            goTo($("#thong-ke"));
-            botSay("Mình đã cuộn tới phần thống kê cho bạn.").then(function () { setChoices([otherGroup()]); });
-        } }
+        otherGroup()
       ]);
     });
   }
@@ -357,7 +362,7 @@
     return fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: message, group: state.group })
+      body: JSON.stringify({ message: message, group: state.group, drugId: state.selectedId })
     }).then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);
       return res.json();
@@ -459,11 +464,89 @@
 
   $("#restart").addEventListener("click", startConversation);
 
+  /* ---------- Công cụ kiểm tra tương tác thuốc bằng AI ---------- */
+  function setupInteractionTool() {
+    var sel1 = $("#select-drug-1");
+    var sel2 = $("#select-drug-2");
+    var btn = $("#btn-check-interaction");
+    var resBox = $("#interaction-result");
+    var badgeEl = $("#interaction-badge");
+    var headlineEl = $("#interaction-headline");
+    var mechEl = $("#interaction-mechanism");
+    var mgmtEl = $("#interaction-management");
+
+    if (!sel1 || !sel2 || !btn) return;
+
+    sel1.replaceChildren();
+    sel2.replaceChildren();
+
+    DATA.drugs.forEach(function (d) {
+      sel1.appendChild(el("option", { attrs: { value: d.id }, text: d.name + " (" + d.activeIngredient + ")" }));
+      sel2.appendChild(el("option", { attrs: { value: d.id }, text: d.name + " (" + d.activeIngredient + ")" }));
+    });
+
+    if (DATA.drugs.length >= 4) {
+      sel1.value = "d04"; // Ibuprofen 400mg
+      sel2.value = "d42"; // Plavix 75mg
+    }
+
+    btn.addEventListener("click", function () {
+      var id1 = sel1.value;
+      var id2 = sel2.value;
+      if (!id1 || !id2) return;
+
+      btn.disabled = true;
+      btn.textContent = "Đang phân tích...";
+
+      var url = (CFG.apiBase || "").replace(/\/$/, "") + "/api/interactions";
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drug1: id1, drug2: id2 })
+      })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        btn.disabled = false;
+        btn.textContent = "Phân tích tương tác";
+        resBox.hidden = false;
+
+        var sev = data.severity || "safe";
+        badgeEl.className = "severity-badge " + "badge-" + sev;
+
+        if (sev === "danger") {
+          badgeEl.textContent = "🔴 Nguy hiểm / Chống chỉ định phối hợp";
+        } else if (sev === "warning") {
+          badgeEl.textContent = "🟡 Cảnh báo / Tăng nguy cơ độc tính";
+        } else if (sev === "caution") {
+          badgeEl.textContent = "🟡 Thận trọng / Cần theo dõi";
+        } else if (sev === "beneficial") {
+          badgeEl.textContent = "🟢 Phối hợp hỗ trợ có lợi";
+        } else {
+          badgeEl.textContent = "🟢 An toàn / Không tương tác bất lợi";
+        }
+
+        headlineEl.textContent = data.title;
+        mechEl.textContent = data.mechanism;
+        mgmtEl.textContent = data.management;
+
+        goTo(resBox);
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = "Phân tích tương tác";
+      });
+    });
+  }
+
   /* ---------- Khởi động ---------- */
 
   function init() {
     renderBadge();
     renderStats();
+    setupInteractionTool();
     startConversation();
   }
 

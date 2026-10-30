@@ -322,6 +322,67 @@ button, input { font: inherit; color: inherit; }
 .about dt { font-weight: 600; margin-bottom: 4px; }
 .about dd { font-family: var(--serif); color: var(--ink-2); max-width: 46ch; }
 
+/* ---------- Công cụ kiểm tra tương tác thuốc bằng AI ---------- */
+.interaction-card {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 26px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, .04);
+}
+.interaction-selectors {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px;
+}
+.selector-box {
+  flex: 1 1 240px; display: flex; flex-direction: column; gap: 8px;
+}
+.selector-box label {
+  font-weight: 600; font-size: .92rem; color: var(--ink-2);
+}
+.interaction-select {
+  width: 100%; min-height: 44px; padding: 8px 14px; border-radius: 12px;
+  border: 1.5px solid var(--line-strong); background: var(--page); color: var(--ink);
+  font-family: var(--sans); font-size: .95rem; outline: none; cursor: pointer;
+}
+.interaction-select:focus-visible {
+  outline: 3px solid var(--focus); outline-offset: 1px;
+}
+.selector-divider {
+  font-size: 1.4rem; padding-bottom: 8px; color: var(--muted); align-self: center;
+}
+.interaction-result {
+  margin-top: 24px; padding: 22px; border-radius: 14px;
+  border: 1.5px solid var(--line); background: var(--page);
+}
+.interaction-header {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 16px;
+}
+.severity-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px;
+  border-radius: 999px; font-weight: 700; font-size: .88rem;
+}
+.badge-danger {
+  background: color-mix(in srgb, var(--signal) 20%, transparent); color: var(--signal);
+  border: 1.5px solid var(--signal);
+}
+.badge-warning, .badge-caution {
+  background: color-mix(in srgb, #eda100 20%, transparent); color: #b27b00;
+  border: 1.5px solid #eda100;
+}
+.badge-beneficial, .badge-safe {
+  background: color-mix(in srgb, var(--brand) 20%, transparent); color: var(--brand);
+  border: 1.5px solid var(--brand);
+}
+#interaction-headline {
+  font-size: 1.2rem; font-weight: 600; color: var(--ink); margin: 0; line-height: 1.3;
+}
+.interaction-details {
+  display: grid; gap: 14px; margin-top: 6px;
+}
+.detail-block h4 {
+  font-size: .95rem; font-weight: 600; color: var(--ink-2); margin-bottom: 4px;
+}
+.detail-block p {
+  line-height: 1.55; color: var(--ink); font-size: .98rem; margin: 0;
+}
+
 /* ---------- Chân trang ---------- */
 .footer { margin-top: 64px; border-top: 1px solid var(--line); background: var(--paper); }
 .footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 24px; padding: 22px 0; font-size: .9rem; color: var(--ink-2); }

@@ -26,6 +26,7 @@
       </a>
       <nav class="topnav" aria-label="Điều hướng chính">
         <a href="#danh-muc">Danh mục</a>
+        <a href="#tuong-tac">Tương tác thuốc</a>
         <a href="#thong-ke">Thống kê</a>
         <a href="#gioi-thieu">Giới thiệu</a>
       </nav>
@@ -72,6 +73,45 @@
         <span>Tên thuốc</span><span>Hoạt chất</span><span>Dạng bào chế</span><span>Nhóm</span>
       </div>
       <ul id="results" class="formulary"></ul>
+    </section>
+
+    <!-- Công cụ kiểm tra tương tác thuốc bằng AI -->
+    <section id="tuong-tac" class="shell block" aria-labelledby="interaction-title">
+      <div class="section-head">
+        <h2 id="interaction-title">Kiểm tra tương tác thuốc bằng AI</h2>
+        <p class="section-note">Đánh giá mức độ an toàn và cảnh báo nguy cơ xuất huyết, ngộ độc, đối kháng dược lý khi phối hợp 2 loại thuốc</p>
+      </div>
+      <div class="interaction-card">
+        <div class="interaction-selectors">
+          <div class="selector-box">
+            <label for="select-drug-1">Thuốc thứ nhất:</label>
+            <select id="select-drug-1" class="interaction-select"></select>
+          </div>
+          <div class="selector-divider" aria-hidden="true">➕</div>
+          <div class="selector-box">
+            <label for="select-drug-2">Thuốc thứ hai:</label>
+            <select id="select-drug-2" class="interaction-select"></select>
+          </div>
+          <button type="button" id="btn-check-interaction" class="btn">Phân tích tương tác</button>
+        </div>
+
+        <div id="interaction-result" class="interaction-result" hidden>
+          <div class="interaction-header">
+            <span id="interaction-badge" class="severity-badge"></span>
+            <h3 id="interaction-headline"></h3>
+          </div>
+          <div class="interaction-details">
+            <div class="detail-block">
+              <h4>⚙️ Cơ chế tương tác dược lý:</h4>
+              <p id="interaction-mechanism"></p>
+            </div>
+            <div class="detail-block">
+              <h4>📋 Khuyến cáo xử trí lâm sàng:</h4>
+              <p id="interaction-management"></p>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section id="thong-ke" class="shell block" aria-labelledby="stats-title">

@@ -1,9 +1,11 @@
 """Module AI Cốt lõi cho Law GPT (Medical AI Engine)
-Bao gồm đầy đủ 4 thành phần cốt lõi:
+Tích hợp 6 thành phần chuyên sâu:
   1. Medical Guardrails & Emergency Triggers (Bộ lọc an toàn & Phát hiện nguy cấp y tế)
-  2. Medical NER (Named Entity Recognition - Nhận diện thực thể y tế tiếng Việt)
-  3. RAG & Semantic Retrieval (Truy xuất tăng cường tri thức y khoa từ CSDL Dược)
-  4. Generative Response Synthesis (Tổng hợp phản hồi AI - Hỗ trợ cả LLM Cloud & Local AI Engine)
+  2. Medical NER (Named Entity Recognition - Bóc tách thực thể y tế & Ý định lâm sàng)
+  3. Clinical Drug Interaction Engine (Bộ phân tích tương tác thuốc thông minh)
+  4. Clinical Home-Care Protocol (Tư vấn chăm sóc phi dược lý & Chế độ sinh hoạt cá nhân hóa)
+  5. RAG & Semantic Retrieval (Truy xuất tăng cường tri thức y khoa từ CSDL Dược)
+  6. Generative Response Synthesis (Tổng hợp phản hồi AI - Hỗ trợ cả Local Engine & Cloud LLM)
 """
 
 from __future__ import annotations
@@ -17,6 +19,18 @@ import unicodedata
 import urllib.request
 import urllib.error
 from pathlib import Path
+
+# Import tri thức dược lâm sàng
+try:
+    from backend.clinical_kb import (
+        analyze_interaction, get_home_care_advice, DRUG_PROFILES,
+        SEVERITY_DANGER, SEVERITY_WARNING, SEVERITY_CAUTION, SEVERITY_BENEFICIAL, SEVERITY_SAFE
+    )
+except ImportError:
+    from clinical_kb import (
+        analyze_interaction, get_home_care_advice, DRUG_PROFILES,
+        SEVERITY_DANGER, SEVERITY_WARNING, SEVERITY_CAUTION, SEVERITY_BENEFICIAL, SEVERITY_SAFE
+    )
 
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "data" / "drugs.db"
@@ -45,6 +59,21 @@ def normalize_text(text: str) -> str:
     text = re.sub(r"\bnon\s+lon\b", "non mua", text)
     text = re.sub(r"\blon\s+mua\b", "non mua", text)
     return text.strip()
+
+
+def find_drugs_in_text(text: str) -> list[str]:
+    """Tìm kiếm các tên thuốc được nhắc đến trong văn bản tự nhiên"""
+    norm = normalize_text(text)
+    found = []
+    # Sắp xếp theo độ dài giảm dần
+    sorted_profiles = sorted(DRUG_PROFILES.items(), key=lambda x: len(x[1]["name"]), reverse=True)
+    for d_id, p in sorted_profiles:
+        name_norm = normalize_text(p["name"])
+        tokens = name_norm.split()
+        if re.search(r"\b" + re.escape(tokens[0]) + r"\b", norm):
+            if d_id not in found:
+                found.append(d_id)
+    return found
 
 
 # ==============================================================================
@@ -213,9 +242,12 @@ CONDITION_DICTIONARY = {
     "tieu duong": "Bệnh đái tháo đường",
 }
 
+HOME_CARE_PATTERN = r"\b(ngoai ra.*nen lam gi|ngoai ra.*lam gi|ngoai ra.*the nao|nen lam gi|can lam gi|kieng gi|can kieng|an gi|uong gi|nghi ngoi|cham soc|sinh hoat|luu y gi|cach chua tai nha|meo|bien phap|hanh dong|loi khuyen)\b"
+INTERACTION_PATTERN = r"\b(uong chung|uong cung|dung chung|dung cung|cung luc|ket hop|uong voi|tuong tac|uong ca hai|phoi hop|co tuong tac|uong duoc khong|dung duoc khong|dong thoi|uong kem)\b"
+
 
 class MedicalNER:
-    """Bộ bóc tách thực thể y tế tiếng Việt (Symptoms, Demographics, Conditions, Intent)"""
+    """Bộ bóc tách thực thể y tế tiếng Việt (Symptoms, Demographics, Conditions, Drug Mentions, Intent)"""
 
     @classmethod
     def extract_entities(cls, text: str) -> dict:
@@ -223,9 +255,8 @@ class MedicalNER:
         symptoms = []
         target_groups = []
 
-        # Sắp xếp các cụm từ triệu chứng dài trước để ưu tiên (VD: 'dau bung duoi' trước 'dau bung')
+        # 1. Bóc tách triệu chứng
         sorted_symptom_terms = sorted(SYMPTOM_DICTIONARY.keys(), key=lambda x: len(x), reverse=True)
-
         for term in sorted_symptom_terms:
             if re.search(r"\b" + re.escape(term) + r"\b", norm):
                 std_name, grp = SYMPTOM_DICTIONARY[term]
@@ -248,10 +279,17 @@ class MedicalNER:
                 if std_cond not in conditions:
                     conditions.append(std_cond)
 
-        # 4. Xác định ý định người dùng (Intent)
+        # 4. Bóc tách các thuốc được nhắc đến trong câu hỏi
+        drug_mentions = find_drugs_in_text(text)
+
+        # 5. Xác định ý định người dùng (Intent)
         intent = "GENERAL_SEARCH"
         if re.search(r"\b(chao|xin chao|hello|hi)\b", norm):
             intent = "GREETING"
+        elif len(drug_mentions) >= 2 or re.search(INTERACTION_PATTERN, norm):
+            intent = "DRUG_INTERACTION"
+        elif re.search(HOME_CARE_PATTERN, norm):
+            intent = "HOME_CARE"
         elif "tac dung phu" in norm or "uong vao bi" in norm:
             intent = "SIDE_EFFECTS"
         elif "chong chi dinh" in norm or "ai khong duoc uong" in norm:
@@ -266,6 +304,7 @@ class MedicalNER:
             "target_groups": target_groups,
             "demographics": demographics,
             "conditions": conditions,
+            "drug_mentions": drug_mentions,
             "intent": intent,
         }
 
@@ -337,6 +376,12 @@ class MedicalRAG:
             doc_vec = {t: (count / (len(tokens) or 1)) * self._idf.get(t, 1.0) for t, count in tf.items()}
             self._tfidf_docs.append(doc_vec)
 
+    def get_drug_by_id(self, drug_id: str) -> dict | None:
+        for d in self._corpus:
+            if d["id"] == drug_id:
+                return d
+        return None
+
     def retrieve(self, query: str, target_groups: list[str] | None = None, demographic_filter: list[str] | None = None, top_k: int = 4) -> list[dict]:
         """Truy xuất các thuốc phù hợp nhất theo Vector Cosine Similarity & Nhóm bệnh lý"""
         if not self._corpus:
@@ -361,7 +406,7 @@ class MedicalRAG:
 
             doc = self._corpus[idx]
 
-            # 1. Trọng số nhóm: nếu thuốc thuộc nhóm đích của triệu chứng vừa bóc tách, boost điểm mạnh mẽ
+            # 1. Trọng số nhóm mục tiêu
             if target_groups and doc["group_id"] in target_groups:
                 score += 0.55
 
@@ -435,8 +480,118 @@ class MedicalLLMGenerator:
         except Exception:
             return None
 
-    def generate(self, user_query: str, entities: dict, retrieved_drugs: list[dict]) -> tuple[str, list[dict]]:
-        # 1. Trường hợp có Cloud LLM Key
+    def generate(
+        self,
+        user_query: str,
+        entities: dict,
+        retrieved_drugs: list[dict],
+        current_drug: dict | None = None,
+        current_group: str | None = None
+    ) -> tuple[str, list[dict]]:
+        """Sinh câu trả lời y tế thông minh đa tình huống"""
+
+        intent = entities["intent"]
+        drug_mentions = entities.get("drug_mentions", [])
+        reply_lines = []
+
+        # ======================================================================
+        # TÌNH HUỐNG 1: KIỂM TRA TƯƠNG TÁC THUỐC (DRUG INTERACTION)
+        # ======================================================================
+        if intent == "DRUG_INTERACTION":
+            if len(drug_mentions) >= 2:
+                id1, id2 = drug_mentions[0], drug_mentions[1]
+                report = analyze_interaction(id1, id2)
+                sev = report["severity"]
+
+                if sev == SEVERITY_DANGER:
+                    badge = "🔴 **MỨC ĐỘ NGUY HIỂM: CHỐNG CHỈ ĐỊNH PHỐI HỢP**"
+                elif sev == SEVERITY_WARNING:
+                    badge = "🟡 **MỨC ĐỘ CẢNH BÁO: TĂNG NGUY CƠ ĐỘC TÍNH**"
+                elif sev == SEVERITY_CAUTION:
+                    badge = "🟡 **MỨC ĐỘ THẬN TRỌNG: CẦN THEO DÕI LÂM SÀNG**"
+                elif sev == SEVERITY_BENEFICIAL:
+                    badge = "🟢 **MỨC ĐỘ ĐÁNH GIÁ: PHỐI HỢP HỖ TRỢ CÓ LỢI**"
+                else:
+                    badge = "🟢 **MỨC ĐỘ AN TOÀN: KHÔNG CÓ TƯƠNG TÁC ĐỐI KHÁNG ĐÁNG KỂ**"
+
+                reply_lines.append(f"🔬 **PHÂN TÍCH TƯƠNG TÁC THUỐC BẰNG AI**")
+                reply_lines.append(f"Cặp phối hợp: **{report['drug1']}** ➕ **{report['drug2']}**\n")
+                reply_lines.append(badge)
+                reply_lines.append(f"📌 **Đánh giá:** {report['title']}\n")
+                reply_lines.append(f"⚙️ **Cơ chế tương tác:**\n{report['mechanism']}\n")
+                reply_lines.append(f"📋 **Khuyến cáo xử trí y khoa:**\n{report['management']}\n")
+                reply_lines.append("⚠️ *Lưu ý: Luôn tham khảo ý kiến bác sĩ hoặc dược sĩ trước khi phối hợp thuốc để đảm bảo an toàn tuyệt đối.*")
+
+                choices = [
+                    {"label": f"Xem {report['drug1']}", "query": report['drug1']},
+                    {"label": f"Xem {report['drug2']}", "query": report['drug2']},
+                    {"label": "Kiểm tra thuốc khác", "query": "tương tác thuốc"},
+                    {"label": "Chọn nhóm khác", "query": "nhóm thuốc"},
+                ]
+                return "\n".join(reply_lines), choices
+
+            elif len(drug_mentions) == 1:
+                d_id = drug_mentions[0]
+                d_name = DRUG_PROFILES.get(d_id, {}).get("name", "thuốc này")
+                reply_lines.append(f"🔬 **Kiểm tra tương tác cho {d_name}:**")
+                reply_lines.append(f"Bạn đang muốn kiểm tra tương tác giữa **{d_name}** với loại thuốc nào khác?")
+                reply_lines.append("👉 Hãy nhắn tên loại thuốc thứ hai (ví dụ: *'{d_name} uống chung với Ibuprofen'* hoặc *'{d_name} và Plavix'*) hoặc chọn một thuốc bên dưới nhé!")
+
+                choices = [{"label": d["name"], "query": f"{d_name} uống chung với {d['name']}"} for d in retrieved_drugs[:4]]
+                choices.append({"label": "Chọn nhóm khác", "query": "nhóm thuốc"})
+                return "\n".join(reply_lines), choices
+
+            else:
+                reply_lines.append("🔬 **Hệ thống AI Kiểm tra Tương tác Thuốc (Drug Interaction Checker):**")
+                reply_lines.append("Bạn có thể kiểm tra xem 2 loại thuốc uống chung với nhau có an toàn không.\n")
+                reply_lines.append("💡 **Cách hỏi:** Nhắn tin theo mẫu:")
+                reply_lines.append("• *'Uống Panadol với Ibuprofen cùng lúc có sao không?'*")
+                reply_lines.append("• *'Plavix kết hợp Meloxicam có được không?'*")
+                reply_lines.append("• *'Concor dùng chung với Ventolin có nguy hiểm không?'*")
+                reply_lines.append("\nHoặc dùng công cụ chọn thuốc tương tác bên dưới trang web để kiểm tra trực quan!")
+
+                choices = [
+                    {"label": "Panadol + Ibuprofen", "query": "Uống Panadol với Ibuprofen có sao không"},
+                    {"label": "Plavix + Meloxicam", "query": "Plavix kết hợp Meloxicam có được không"},
+                    {"label": "Nexium + Ibuprofen", "query": "Nexium uống chung Ibuprofen có sao không"},
+                    {"label": "Chọn nhóm khác", "query": "nhóm thuốc"},
+                ]
+                return "\n".join(reply_lines), choices
+
+        # ======================================================================
+        # TÌNH HUỐNG 2: CHĂM SÓC PHI DƯỢC LÝ & SINH HOẠT TẠI NHÀ (HOME CARE)
+        # ======================================================================
+        if intent == "HOME_CARE":
+            target_group = current_group
+            drug_name = None
+
+            if current_drug:
+                target_group = current_drug.get("group") or current_drug.get("group_id")
+                drug_name = current_drug.get("name")
+            elif retrieved_drugs:
+                target_group = retrieved_drugs[0].get("group") or retrieved_drugs[0].get("group_id")
+                drug_name = retrieved_drugs[0].get("name")
+
+            protocol = get_home_care_advice(target_group, drug_name)
+
+            reply_lines.append(f"🩺 **{protocol['title']}**\n")
+            reply_lines.append("Bên cạnh việc dùng thuốc đúng chỉ định, việc áp dụng đồng bộ các biện pháp chăm sóc phi dược lý sẽ giúp cơ thể nhanh hồi phục và hạn chế tái phát:\n")
+            reply_lines.append(f"🛌 **1. Chế độ Nghỉ ngơi & Môi trường:**\n{protocol['rest']}\n")
+            reply_lines.append(f"🌡️ **2. Biện pháp Vật lý hỗ trợ:**\n{protocol['physical']}\n")
+            reply_lines.append(f"🍲 **3. Dinh dưỡng & Bù nước (Nên ăn gì / Kiêng gì):**\n{protocol['nutrition']}\n")
+            reply_lines.append(f"🚨 **4. Dấu hiệu Cảnh báo đỏ (Cần đến bệnh viện ngay):**\n{protocol['red_flags']}\n")
+            reply_lines.append("💡 *Nguồn: Hướng dẫn chăm sóc lâm sàng tại nhà – Cục Quản lý Dược & Dược thư Quốc gia.*")
+
+            choices = [
+                {"label": "Kiểm tra tương tác thuốc", "query": "kiểm tra tương tác thuốc"},
+                {"label": "Xem thuốc cùng nhóm", "query": protocol.get("group_name", "nhóm thuốc")},
+                {"label": "Chọn nhóm khác", "query": "nhóm thuốc"},
+            ]
+            return "\n".join(reply_lines), choices
+
+        # ======================================================================
+        # TÌNH HUỐNG 3: CLOUD LLM (NẾU CÓ CẤU HÌNH API KEY)
+        # ======================================================================
         if self.provider == "gemini" and self.api_key:
             context_text = "\n\n".join([
                 f"- Tên thuốc: {d['name']} ({d['active_ingredient']})\n"
@@ -467,34 +622,26 @@ class MedicalLLMGenerator:
                 choices.append({"label": "Chọn nhóm khác", "query": "nhóm thuốc"})
                 return cloud_reply, choices
 
-        # 2. Local Medical Engine
-        intent = entities["intent"]
+        # ======================================================================
+        # TÌNH HUỐNG 4: CHÀO HỎI & HỎI TÁC DỤNG PHỤ
+        # ======================================================================
         symptoms = entities["symptoms"]
         demos = entities["demographics"]
         conditions = entities["conditions"]
         q_norm = normalize_text(user_query)
 
-        # Kiểm tra xem người dùng có đang hỏi trực tiếp tên thuốc cụ thể hay không
-        is_direct_drug_search = False
-        if retrieved_drugs:
-            top_d = retrieved_drugs[0]
-            name_norm = normalize_text(top_d["name"])
-            active_norm = normalize_text(top_d["active_ingredient"])
-            # Tên thuốc xuất hiện trong câu hỏi
-            if name_norm in q_norm or any(part in q_norm for part in name_norm.split() if len(part) >= 4):
-                is_direct_drug_search = True
-            elif active_norm in q_norm:
-                is_direct_drug_search = True
-
-        reply_lines = []
-
         if intent == "GREETING":
             reply_lines.append(
                 "👋 **Xin chào! Mình là Trợ lý AI Dược phẩm Law GPT (Infranixx).**\n"
-                "Hệ thống vận hành với kiến trúc AI Y tế 4 lớp: *Medical Guardrails*, *Medical NER*, *RAG Semantic Retrieval* và *Generative Synthesis*.\n\n"
-                "Bạn có thể nhắn triệu chứng (ví dụ: *'đau đầu sốt cao'*, *'đau bụng buồn nôn'*, *'viêm họng có đờm'*), hỏi tên biệt dược, hoặc bấm chọn các nhóm thuốc bên dưới nhé!"
+                "Hệ thống vận hành với kiến trúc AI Y tế 6 lớp: *Medical Guardrails*, *Medical NER*, *AI Drug Interaction Checker*, *Clinical Home-Care*, *RAG Semantic Retrieval* và *Generative Synthesis*.\n\n"
+                "Bạn có thể:\n"
+                "• Nhắn triệu chứng bệnh (*'đau đầu sốt cao'*, *'đau bụng buồn nôn'*).\n"
+                "• Kiểm tra tương tác thuốc (*'uống Panadol với Ibuprofen có sao không?'*).\n"
+                "• Hỏi cách chăm sóc (*'ngoài ra tôi nên làm gì?'*).\n"
+                "• Hoặc bấm chọn nhanh các nhóm thuốc bên dưới nhé!"
             )
             choices = [{"label": d["name"], "query": d["name"]} for d in retrieved_drugs[:4]]
+            choices.append({"label": "Kiểm tra tương tác thuốc", "query": "tương tác thuốc"})
             choices.append({"label": "Chọn nhóm khác", "query": "nhóm thuốc"})
             return "\n\n".join(reply_lines), choices
 
@@ -506,12 +653,15 @@ class MedicalLLMGenerator:
             reply_lines.append("\n*Nếu gặp phản ứng bất thường hoặc khó thở, hãy ngừng dùng thuốc ngay và tham khảo ý kiến chuyên gia y tế.*")
             choices = [
                 {"label": f"Xem {d['name']}", "query": d["name"]},
+                {"label": "Hành động nên làm", "query": "ngoài ra tôi nên làm gì"},
                 {"label": "Thuốc cùng nhóm", "query": d["group_name"]},
                 {"label": "Chọn nhóm khác", "query": "nhóm thuốc"},
             ]
             return "\n".join(reply_lines), choices
 
-        # Nhánh 1: Người dùng mô tả triệu chứng bệnh
+        # ======================================================================
+        # TÌNH HUỐNG 5: TƯ VẤN TRIỆU CHỨNG LÂM SÀNG (SYMPTOM CONSULTATION)
+        # ======================================================================
         if symptoms:
             sym_str = ", ".join(symptoms)
             demo_str = f" ở đối tượng **{', '.join(demos)}**" if demos else ""
@@ -531,11 +681,24 @@ class MedicalLLMGenerator:
 
             reply_lines.append("\n💡 *Lưu ý: Thông tin trên mang tính chất tham khảo. Hãy tham khảo ý kiến dược sĩ/bác sĩ trước khi dùng, đặc biệt với phụ nữ mang thai hoặc trẻ nhỏ.*")
             choices = [{"label": d["name"], "query": d["name"]} for d in retrieved_drugs[:4]]
+            choices.append({"label": "Hành động nên làm", "query": "ngoài ra tôi nên làm gì"})
             choices.append({"label": "Chọn nhóm khác", "query": "nhóm thuốc"})
             return "\n".join(reply_lines), choices
 
-        # Nhánh 2: Người dùng đích danh tra cứu 1 loại thuốc cụ thể
-        elif is_direct_drug_search and retrieved_drugs:
+        # ======================================================================
+        # TÌNH HUỐNG 6: TRA CỨU ĐÍCH DANH 1 LOẠI THUỐC
+        # ======================================================================
+        is_direct_drug_search = False
+        if retrieved_drugs:
+            top_d = retrieved_drugs[0]
+            name_norm = normalize_text(top_d["name"])
+            active_norm = normalize_text(top_d["active_ingredient"])
+            if name_norm in q_norm or any(part in q_norm for part in name_norm.split() if len(part) >= 4):
+                is_direct_drug_search = True
+            elif active_norm in q_norm:
+                is_direct_drug_search = True
+
+        if is_direct_drug_search and retrieved_drugs:
             d = retrieved_drugs[0]
             reply_lines.append(f"📋 **Hồ sơ thuốc trích xuất từ CSDL Dược: {d['name']}**\n")
             reply_lines.append(f"• **Hoạt chất:** {d['active_ingredient']} ({d['strength']})")
@@ -546,21 +709,29 @@ class MedicalLLMGenerator:
             if d.get("contraindications"):
                 reply_lines.append(f"• **Chống chỉ định:** {d['contraindications']}")
             reply_lines.append("\n👉 *Bấm vào nút bên dưới để xem chi tiết tờ thông tin thuốc.*")
-            choices = [{"label": f"Xem {d['name']}", "query": d["name"]}, {"label": "Thuốc cùng nhóm", "query": d["group_name"]}, {"label": "Chọn nhóm khác", "query": "nhóm thuốc"}]
+            choices = [
+                {"label": f"Xem {d['name']}", "query": d["name"]},
+                {"label": "Hành động nên làm", "query": "ngoài ra tôi nên làm gì"},
+                {"label": "Thuốc cùng nhóm", "query": d["group_name"]},
+                {"label": "Chọn nhóm khác", "query": "nhóm thuốc"}
+            ]
             return "\n".join(reply_lines), choices
 
-        # Nhánh 3: Không rõ triệu chứng và không phải tên thuốc cụ thể
-        else:
-            reply_lines.append(
-                f"🤔 **Ghi nhận yêu cầu:** “*{user_query}*”.\n"
-                "Hệ thống chưa nhận diện rõ triệu chứng hoặc tên thuốc từ câu hỏi của bạn.\n\n"
-                "💡 **Để được hỗ trợ tốt nhất, bạn có thể:**\n"
-                "• Miêu tả cụ thể triệu chứng (ví dụ: *'đau đầu sốt cao'*, *'đau bụng buồn nôn'*, *'viêm họng có đờm'*).\n"
-                "• Hoặc bấm chọn nhanh các nhóm thuốc bên dưới để xem danh mục chi tiết:"
-            )
-            choices = [{"label": d["name"], "query": d["name"]} for d in retrieved_drugs[:4]]
-            choices.append({"label": "Chọn nhóm khác", "query": "nhóm thuốc"})
-            return "\n".join(reply_lines), choices
+        # ======================================================================
+        # TÌNH HUỐNG 7: FALLBACK HƯỚNG DẪN TƯƠNG TÁC
+        # ======================================================================
+        reply_lines.append(
+            f"🤔 **Ghi nhận yêu cầu:** “*{user_query}*”.\n"
+            "Hệ thống chưa nhận diện rõ triệu chứng hoặc tên thuốc từ câu hỏi của bạn.\n\n"
+            "💡 **Để được hỗ trợ tốt nhất, bạn có thể:**\n"
+            "• Miêu tả triệu chứng (ví dụ: *'đau đầu sốt cao'*, *'đau bụng buồn nôn'*).\n"
+            "• Kiểm tra tương tác thuốc (ví dụ: *'uống Panadol với Ibuprofen có sao không'*).\n"
+            "• Hoặc bấm chọn nhanh các nhóm thuốc bên dưới để xem danh mục chi tiết:"
+        )
+        choices = [{"label": d["name"], "query": d["name"]} for d in retrieved_drugs[:4]]
+        choices.append({"label": "Kiểm tra tương tác thuốc", "query": "tương tác thuốc"})
+        choices.append({"label": "Chọn nhóm khác", "query": "nhóm thuốc"})
+        return "\n".join(reply_lines), choices
 
 
 # ==============================================================================
@@ -568,21 +739,34 @@ class MedicalLLMGenerator:
 # ==============================================================================
 
 class MedicalAIEngine:
-    """Đầu mối tích hợp quy trình AI 4 lớp của Law GPT"""
+    """Đầu mối tích hợp quy trình AI 6 lớp của Law GPT"""
 
     def __init__(self):
         self.guardrails = MedicalGuardrails()
         self.ner = MedicalNER()
         self.rag = MedicalRAG()
         self.llm = MedicalLLMGenerator()
+        self.last_drug_id: str | None = None
+        self.last_group_id: str | None = None
 
-    def process(self, query: str, current_group: str | None = None) -> dict:
+    def process(
+        self,
+        query: str,
+        current_group: str | None = None,
+        current_drug_id: str | None = None
+    ) -> dict:
+        # Cập nhật context memory
+        if current_drug_id:
+            self.last_drug_id = current_drug_id
+        if current_group:
+            self.last_group_id = current_group
+
         # 1. Kiểm tra An toàn & Nguy cấp (Guardrails)
         is_emergency, reason = self.guardrails.check_emergency(query)
         if is_emergency:
             return self.guardrails.build_emergency_response(reason)
 
-        # 2. Nhận diện Thực thể Y tế (Medical NER)
+        # 2. Nhận diện Thực thể Y tế & Ý định lâm sàng (Medical NER)
         entities = self.ner.extract_entities(query)
 
         # 3. Truy xuất ngữ nghĩa từ CSDL Dược (RAG Retrieval)
@@ -593,8 +777,26 @@ class MedicalAIEngine:
             top_k=4
         )
 
-        # 4. Sinh phản hồi có căn cứ tri thức (LLM Generation)
-        reply_text, choices = self.llm.generate(query, entities, retrieved_drugs)
+        # Lấy thông tin thuốc hiện tại đang xem (nếu có)
+        active_drug_id = current_drug_id or self.last_drug_id
+        current_drug = self.rag.get_drug_by_id(active_drug_id) if active_drug_id else None
+
+        if current_drug and not current_group:
+            current_group = current_drug.get("group_id")
+
+        # 4. Sinh phản hồi AI có căn cứ tri thức (LLM / Clinical KB Generation)
+        reply_text, choices = self.llm.generate(
+            user_query=query,
+            entities=entities,
+            retrieved_drugs=retrieved_drugs,
+            current_drug=current_drug,
+            current_group=current_group
+        )
+
+        top_drug = retrieved_drugs[0]["name"] if retrieved_drugs else (current_drug["name"] if current_drug else None)
+        if retrieved_drugs:
+            self.last_drug_id = retrieved_drugs[0]["id"]
+            self.last_group_id = retrieved_drugs[0].get("group_id")
 
         return {
             "reply": reply_text,
@@ -602,9 +804,10 @@ class MedicalAIEngine:
             "ai_metadata": {
                 "is_emergency": False,
                 "provider": self.llm.provider,
+                "intent": entities["intent"],
                 "entities": entities,
                 "retrieved_count": len(retrieved_drugs),
-                "top_drug": retrieved_drugs[0]["name"] if retrieved_drugs else None
+                "top_drug": top_drug
             }
         }
 

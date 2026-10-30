@@ -24,8 +24,10 @@ PORT = 8000
 # Import Medical AI Engine
 try:
     from backend.ai_engine import ai_engine
+    from backend.clinical_kb import analyze_interaction
 except ImportError:
     from ai_engine import ai_engine
+    from clinical_kb import analyze_interaction
 
 
 def normalize(text: str) -> str:
@@ -247,10 +249,29 @@ class LawGPTRequestHandler(SimpleHTTPRequestHandler):
 
             message = payload.get("message", "")
             current_group = payload.get("group", None)
+            current_drug_id = payload.get("drugId") or payload.get("drug_id")
 
-            # Xử lý thông qua Medical AI Engine (RAG + NER + Guardrails + Generator)
-            response = ai_engine.process(message, current_group)
+            # Xử lý thông qua Medical AI Engine (RAG + NER + Guardrails + Generator + Clinical KB)
+            response = ai_engine.process(message, current_group=current_group, current_drug_id=current_drug_id)
             self._send_json(HTTPStatus.OK, response)
+            return
+
+        # 6. API: POST /api/interactions (Kiểm tra tương tác thuốc bằng AI)
+        if path == "/api/interactions":
+            content_length = int(self.headers.get("Content-Length", 0))
+            if content_length > 0:
+                raw_body = self.rfile.read(content_length).decode("utf-8")
+                try:
+                    payload = json.loads(raw_body)
+                except Exception:
+                    payload = {}
+            else:
+                payload = {}
+
+            drug1 = payload.get("drug1", "")
+            drug2 = payload.get("drug2", "")
+            report = analyze_interaction(drug1, drug2)
+            self._send_json(HTTPStatus.OK, report)
             return
 
         self._send_json(HTTPStatus.NOT_FOUND, {"error": "Endpoint không tồn tại"})
